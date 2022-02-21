@@ -6,8 +6,9 @@ An AutoHotkey script providing quality of life improvements.
 Current features:
 - Elemental vision bound to `mouse4`
 - Quick loot when holding `F`
+- `CapsLock` AutoRun Toggle(holding `W`)
 - Holding the `tilde(~)` key allows using the `mouse wheel` to change camera pitch (useful for looking down when gliding and aiming with archers with low mouse sensitivity)
-- [^1] `R` acts as a Confirm button in menus, currently clicks on: all `confirm` buttons, `claim` buttons, `BP claim` buttons, `teleport` button, `navigate` button in the map and quest journal
+- [^1] `R` acts as a Confirm button in menus, currently clicks on: all `confirm` buttons, `claim` buttons, `BP claim` buttons, `BP Claim All` button, `teleport` button, `navigate` button in the map and quest journal
 - [^2] Dialog options can be selected with `number keys`, this only works if you're already in the dialog and not for selecting an option while running around(sorry, this seems to be impossible to achieve without major bugs at the time)
 - Admin mode check (required to send keys to the game always running in admin mode)
 

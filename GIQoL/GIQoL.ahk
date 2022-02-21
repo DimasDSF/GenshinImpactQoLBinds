@@ -116,8 +116,8 @@ if !WinActive("ahk_class UnityWndClass")
 	return
 if !IsCursorVisible()
 {
-	Sleep, 200
-	if GetKeyState("f", "P")
+	KeyWait, f, T0.2
+	if (ErrorLevel = 1)
 	{
 		Loop
 		{
@@ -194,6 +194,15 @@ if IsCursorVisible()
 							ClickAndReturn(FoundXBPClaim+40, FoundYBPClaim+15)
 							return
 						}
+						else
+						{
+							ImageSearch, FoundXBPClaimAll, FoundYBPClaimAll, 1600, 930, A_ScreenWidth, A_ScreenHeight, *70, *TransBlack GenshinControlHints\BPClaimAll.png
+							if (ErrorLevel = 0)
+							{
+								ClickAndReturn(FoundXBPClaimAll+40, FoundYBPClaimAll-2)
+								return
+							}
+						}
 					}
 				}
 			}
@@ -231,7 +240,7 @@ FindFirstDialogOptionColorPixel(x1, y1, x2, y2)
 	if (debug)
 	{
 		devr := DevRect(x1, y1, x2, y2, "FFD700")
-		Sleep, 2000
+		Sleep, 500
 		DestroyDevRect(devr)
 	}
 	; Normal dialog option
@@ -292,153 +301,163 @@ FindFirstDialogOptionColorPixel(x1, y1, x2, y2)
 }
 
 ; Find where the bottom-most option is. For cases where NPCs say 4+ lines of text and the dialog gets moved up
-GetDialogOffset()
+GetDialogOffset(isMapMode)
 {
-	checkArea := [[1290, 355], [1310, 855]]
-	curY := checkArea[2][2]
-	checkInterval := 10
-	while (curY > checkArea[1][2])
+	if (isMapMode)
 	{
-		PixelSearch, FoundXLowDialog, FoundYLowDialog, checkArea[1][1], curY - checkInterval, checkArea[2][1], curY, 0x2E3A4B, 5, Fast RGB
-		if (ErrorLevel = 0)
+		/*
+			Let me tell you a tale of a mental illness:
+			Map UI selection menu:
+			- expands up until its 5 options
+			- shifts up and expands down on the 6th
+			- expands down 6+
+			G why...
+		*/
+		;testColor := 0x636459
+		testColor := 0x5A5D58
+		confidenceMargin := 8
+		posX := 1296
+		posSize := [42, 2]
+		; Sort descending
+		positions := [886, 836]
+		Loop % positions.Length()
 		{
 			if (debug)
 			{
-				SoundPlay *64
-				devrlowestdialog1 := DevRect(FoundXLowDialog-50, FoundYLowDialog-3, FoundXLowDialog+50, FoundYLowDialog+3,,140)
-				Sleep, 3000
-				DestroyDevRect(devrlowestdialog1)
+				devrcheckregion1 := DevRect(posX, positions[A_Index], posX + posSize[1], positions[A_Index] + posSize[2],"FF00FF",140)
+				Sleep, 400
+				DestroyDevRect(devrcheckregion1)
 			}
-			return {"found": 1, "x": FoundXLowDialog, "y": FoundYLowDialog}
+			PixelSearch, FoundXLowDialog, FoundYLowDialog, posX, positions[A_Index], posX + posSize[1], positions[A_Index] + posSize[2], testColor, confidenceMargin, Fast RGB
+			if (ErrorLevel = 0)
+			{
+				if (debug)
+				{
+					SoundPlay *64
+					devrlowestdialog1 := DevRect(FoundXLowDialog-50, FoundYLowDialog-3, FoundXLowDialog+50, FoundYLowDialog+3,,140)
+					Sleep, 3000
+					DestroyDevRect(devrlowestdialog1)
+				}
+				return {"found": 1, "x": FoundXLowDialog, "y": FoundYLowDialog}
+			}
 		}
+		return {"found": 0, "x": -1, "y": -1}
+	}
+	else
+	{
+		testColor := 0x65655F
+		confidenceMargin := 5
+		checkInterval := 10
+		checkArea := [[1290, 560], [1310, 855]]
 		if (debug)
 		{
-			devrcheckregion1 := DevRect(checkArea[1][1], curY - checkInterval, checkArea[2][1], curY,"FF00FF",140)
-			Sleep, 400
-			DestroyDevRect(devrcheckregion1)
+			devrcheckarearegion1 := DevRect(checkArea[1][1], checkArea[1][2], checkArea[2][1], checkArea[2][2],"66FF66",140)
+			Sleep, 1000
+			DestroyDevRect(devrcheckarearegion1)
 		}
-		curY := curY - checkInterval
+		curY := checkArea[2][2]
+		while (curY > checkArea[1][2])
+		{
+			if (debug)
+			{
+				devrcheckregion1 := DevRect(checkArea[1][1], curY - checkInterval, checkArea[2][1], curY,"FF00FF",140)
+				Sleep, 400
+				DestroyDevRect(devrcheckregion1)
+			}
+			;2E3A4B
+			PixelSearch, FoundXLowDialog, FoundYLowDialog, checkArea[2][1], curY, checkArea[1][1], curY - checkInterval, testColor, confidenceMargin, Fast RGB
+			if (ErrorLevel = 0)
+			{
+				if (debug)
+				{
+					SoundPlay *64
+					devrlowestdialog1 := DevRect(FoundXLowDialog-50, FoundYLowDialog-3, FoundXLowDialog+50, FoundYLowDialog+3,,140)
+					Sleep, 3000
+					DestroyDevRect(devrlowestdialog1)
+				}
+				return {"found": 1, "x": FoundXLowDialog, "y": FoundYLowDialog}
+			}
+			
+			curY := curY - checkInterval
+		}
+		return {"found": 0, "x": -1, "y": -1}
 	}
-	return {"found": 0, "x": -1, "y": -1}
 }
 
 GetDialogOptionPos(option)
 {
 	mapMode := IsInMapGUI()
-	if (!mapMode)
+	if (mapMode)
+	{
+		; In map
+		dialogBoxPositions := [[468, 505], [542, 580], [617, 655], [690, 728], [765, 805], [840, 878]]
+		areaXPositions := [1323, 1348]
+		greyCheckMargin := 5
+	}
+	else
 	{
 		; Generic Dialog
 		dialogBoxPositions := [[414, 450], [489, 525], [563, 599], [637, 673], [712, 748], [787, 823]]
 		areaXPositions := [1325, 1350]
+		greyCheckMargin := 8
+	}
+	confSearchSize := [20, 10]
+	dialogOffsetInfo := GetDialogOffset(mapMode)
+	if (dialogOffsetInfo["found"])
+	{
+		dialogOffsetY := (dialogOffsetInfo["y"] - dialogBoxPositions[6][2]) - 14
+		if (debug)
+		{
+			dtOffset1 := DevText(areaXPositions[1]-600, dialogBoxPositions[6][2] + dialogOffsetY, "Lowest Y: " . dialogOffsetInfo["y"] . " | Dialog position offset: " . dialogOffsetY,,, 14)
+			Sleep, 2000
+			DestroyDevText(dtOffset1)
+		}
 	}
 	else
 	{
-		; In map
-		dialogBoxPositions := [455, 886]
-		areaXPositions := [1320, 1372]
+		dialogOffsetY := 0
 	}
-	confSearchSize := [30, 4]
-	if (mapMode)
+	Loop 6
 	{
-		topY := dialogBoxPositions[1]
-		while (topY < dialogBoxPositions[2])
+		firstMenuButton := FindFirstDialogOptionColorPixel(areaXPositions[1], dialogBoxPositions[A_Index][1] + dialogOffsetY, areaXPositions[2], dialogBoxPositions[A_Index][2] + dialogOffsetY)
+		if (firstMenuButton["found"])
 		{
-			firstMenuButton := FindFirstDialogOptionColorPixel(areaXPositions[1], topY, areaXPositions[2], dialogBoxPositions[2])
-			if (!firstMenuButton["found"])
-				break
 			; Dialog option background check
-			PixelSearch, FoundXGrey, FoundYGrey, firstMenuButton["x"] - confSearchSize[1], firstMenuButton["y"] - confSearchSize[2], firstMenuButton["x"] + confSearchSize[1], firstMenuButton["y"] + confSearchSize[2], 0x363E46, 5, Fast RGB
+			PixelSearch, FoundXGrey, FoundYGrey, firstMenuButton["x"] - confSearchSize[1], firstMenuButton["y"] - confSearchSize[2], firstMenuButton["x"] + confSearchSize[1], firstMenuButton["y"] + confSearchSize[2], 0x363E46, greyCheckMargin, Fast RGB
 			if (ErrorLevel = 0)
 			{
-				TargetX := firstMenuButton["x"]+100
-				optionOffset := 75 * min(option-1, 5)
-				TargetY := firstMenuButton["y"]+optionOffset
+				TargetX := areaXPositions[1]+100
+				optionIndex := A_Index + (option-1)
+				if (optionIndex > 6)
+				{
+					; Something went wrong or user is trying to select a nonexisting option. Bail out.
+					return {"x": -1, "y": -1, "found": 0}
+				}
+				TargetY := (dialogBoxPositions[optionIndex][1] + ((dialogBoxPositions[optionIndex][2] - dialogBoxPositions[optionIndex][1]) // 2)) + dialogOffsetY
 				if (debug)
 				{
 					SoundPlay *64
+					devr := DevRect(areaXPositions[1], dialogBoxPositions[A_Index][1] + dialogOffsetY, areaXPositions[2], dialogBoxPositions[A_Index][2] + dialogOffsetY, "FFD700")
 					devrhit1 := DevRect(firstMenuButton["x"]-3, firstMenuButton["y"]-3, firstMenuButton["x"]+3, firstMenuButton["y"]+3,,140)
 					Sleep, 3000
 					PixelGetColor, pcolor1, %FoundXGrey%, %FoundYGrey%
-					dt1 := DevText(firstMenuButton["x"]-450, firstMenuButton["y"], "Confirmed by pixel " . pcolor1 . " @ X:" . FoundXGrey . ", Y:" . FoundYGrey,,, 14)
+					dt1 := DevText(areaXPositions[1]-450, dialogBoxPositions[A_Index][1] + dialogOffsetY, "Confirmed by pixel " . pcolor1 . " @ X:" . FoundXGrey . ", Y:" . FoundYGrey,,, 14)
 					devr2 := DevRect(firstMenuButton["x"]-confSearchSize[1], firstMenuButton["y"] - confSearchSize[2], firstMenuButton["x"]+confSearchSize[1], firstMenuButton["y"] + confSearchSize[2], "11E66D")
 					devrhit2 := DevRect(FoundXGrey-3, FoundYGrey-3, FoundXGrey+3, FoundYGrey+3,"00FF00",140)
 					Sleep, 2000
+					devr3 := DevRect(areaXPositions[1], dialogBoxPositions[optionIndex][1] + dialogOffsetY, areaXPositions[2], dialogBoxPositions[optionIndex][2] + dialogOffsetY, "00E6E7")
+					Sleep, 1000
 					tardevr := DevRect(TargetX-3, TargetY-3, TargetX+3, TargetY+3,"FF00FF",140)
 					Sleep, 3000
+					DestroyDevText(dt1)
+					DestroyDevRect(devr)
+					DestroyDevRect(devr2)
+					DestroyDevRect(devr3)
 					DestroyDevRect(devrhit1)
 					DestroyDevRect(devrhit2)
-					DestroyDevText(dt1)
-					DestroyDevRect(devr2)
 					DestroyDevRect(tardevr)
 				}
 				return {"x": TargetX, "y": TargetY, "found": 1}
-			}
-			else
-			{
-				topY := firstMenuButton["y"] + 30
-			}
-		}
-	}
-	else
-	{
-		dialogOffsetInfo := GetDialogOffset()
-		if (dialogOffsetInfo["found"])
-		{
-			dialogOffsetY := dialogOffsetInfo["y"] - dialogBoxPositions[6][2]
-			if (debug)
-			{
-				dtOffset1 := DevText(areaXPositions[1]-600, dialogBoxPositions[6][2] + dialogOffsetY, "Lowest Y: " . dialogOffsetInfo["y"] . " | Dialog position offset: " . dialogOffsetY,,, 14)
-				Sleep, 2000
-				DestroyDevText(dtOffset1)
-			}
-		}
-		else
-		{
-			dialogOffsetY := 0
-		}
-		Loop 6
-		{
-			firstMenuButton := FindFirstDialogOptionColorPixel(areaXPositions[1], dialogBoxPositions[A_Index][1] + dialogOffsetY, areaXPositions[2], dialogBoxPositions[A_Index][2] + dialogOffsetY)
-			if (firstMenuButton["found"])
-			{
-				; Dialog option background check
-				; Old color: 363E46 -> 2C3C50
-				PixelSearch, FoundXGrey, FoundYGrey, firstMenuButton["x"] - confSearchSize[1], firstMenuButton["y"] - confSearchSize[2], firstMenuButton["x"] + confSearchSize[1], firstMenuButton["y"] + confSearchSize[2], 0x363E46, 8, Fast RGB
-				if (ErrorLevel = 0)
-				{
-					TargetX := areaXPositions[1]+100
-					optionIndex := A_Index + (option-1)
-					if (optionIndex > 6)
-					{
-						; Something went wrong or user is trying to select a nonexisting option. Bail out.
-						return {"x": -1, "y": -1, "found": 0}
-					}
-					TargetY := (dialogBoxPositions[optionIndex][1] + ((dialogBoxPositions[optionIndex][2] - dialogBoxPositions[optionIndex][1]) // 2)) + dialogOffsetY
-					if (debug)
-					{
-						SoundPlay *64
-						devr := DevRect(areaXPositions[1], dialogBoxPositions[A_Index][1] + dialogOffsetY, areaXPositions[2], dialogBoxPositions[A_Index][2] + dialogOffsetY, "FFD700")
-						devrhit1 := DevRect(firstMenuButton["x"]-3, firstMenuButton["y"]-3, firstMenuButton["x"]+3, firstMenuButton["y"]+3,,140)
-						Sleep, 3000
-						PixelGetColor, pcolor1, %FoundXGrey%, %FoundYGrey%
-						dt1 := DevText(areaXPositions[1]-450, dialogBoxPositions[A_Index][1] + dialogOffsetY, "Confirmed by pixel " . pcolor1 . " @ X:" . FoundXGrey . ", Y:" . FoundYGrey,,, 14)
-						devr2 := DevRect(firstMenuButton["x"]-confSearchSize[1], firstMenuButton["y"] - confSearchSize[2], firstMenuButton["x"]+confSearchSize[1], firstMenuButton["y"] + confSearchSize[2], "11E66D")
-						devrhit2 := DevRect(FoundXGrey-3, FoundYGrey-3, FoundXGrey+3, FoundYGrey+3,"00FF00",140)
-						Sleep, 2000
-						devr3 := DevRect(areaXPositions[1], dialogBoxPositions[optionIndex][1] + dialogOffsetY, areaXPositions[2], dialogBoxPositions[optionIndex][2] + dialogOffsetY, "00E6E7")
-						Sleep, 1000
-						tardevr := DevRect(TargetX-3, TargetY-3, TargetX+3, TargetY+3,"FF00FF",140)
-						Sleep, 3000
-						DestroyDevText(dt1)
-						DestroyDevRect(devr)
-						DestroyDevRect(devr2)
-						DestroyDevRect(devr3)
-						DestroyDevRect(devrhit1)
-						DestroyDevRect(devrhit2)
-						DestroyDevRect(tardevr)
-					}
-					return {"x": TargetX, "y": TargetY, "found": 1}
-				}
 			}
 		}
 	}
@@ -446,6 +465,28 @@ GetDialogOptionPos(option)
 		SoundPlay *16
 	return {"x": -1, "y": -1, "found": 0}
 }
+
+~CapsLock::
+if !WinActive("ahk_class UnityWndClass")
+;ahk_exe GenshinImpact.exe
+	return
+KeyWait, CapsLock
+Sleep, 10
+if (GetKeyState("CapsLock", "T"))
+{
+	Send {w down}
+	Loop 
+	{
+		KeyWait, w, D T0.1
+		if (!GetKeyState("CapsLock", "T") || ErrorLevel = 0)
+		{
+			Break
+		}
+	}
+	Send {w up}
+	SetCapsLockState, Off
+}
+return
 
 ~1::
 ~2::

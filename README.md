@@ -15,8 +15,11 @@ Current features:
 -----
 
 [^1]: This feature relies on [ImageSearch](https://www.autohotkey.com/docs/commands/ImageSearch.htm) that requires you to have the same(or close to it) screen resolution as the screen that the _`hint`_ was taken from due to the way the ingame buttons get blur.<br>
-My setup at the time of arranging the _`hints`_ is `1920x1080` with a `21.5"` diagonal.<br>
-If any confirm button does not get picked up: make screenshots of the menues that have confirm buttons and remake the original hints by selecting same parts on your screenshots.
+Currently provided _`hints`_ created with a resolution of 1920x1080.<br>
+If any confirm button does not get picked up:
+    1) make a screenshot of the whole screen with the menu that contains the confirm button
+    2) crop the screenshot to only include the same area as the original _`hint`_ but how it looks with your resolution.
+    3) replace it in the `GenshinControlHints/` folder
 
 [^2]: This feature uses [PixelSearch](https://www.autohotkey.com/docs/commands/PixelSearch.htm) with a set of very precise coordinates to detect the dialog options being on the screen and select the correct one in correspondence to the button pressed.<br>
 It is planned to shift from using "Absolute" coordinates to a ratio multiplied by the screen size that will in theory allow resolution independent coordinates (ETA unknown)

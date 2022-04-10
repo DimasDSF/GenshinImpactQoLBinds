@@ -126,8 +126,10 @@ if !IsCursorVisible()
 			Send {f down}
 			Send {f up}
 			Click, WheelDown
+			Sleep, 15
 			Send {f down}
 			Send {f up}
+			Click, WheelUp
 			Sleep, 15
 		}
 	}

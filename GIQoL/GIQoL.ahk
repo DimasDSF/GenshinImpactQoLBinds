@@ -69,9 +69,9 @@ IsCursorVisible()
 
 PassChecks(windowcheck:=1, cursorcheck:="NOTSET", notinchatcheck:=1)
 {
-	if (cursorcheck == "NOTSET")
+	if (cursorcheck = "NOTSET")
 		cursorcheck:=[1, 1]
-	if (windowcheck && !WinActive("ahk_class UnityWndClass"))
+	if (windowcheck && !WinActive("ahk_class UnityWndClass")) ;ahk_exe GenshinImpact.exe
 	{
 		return 0
 	}
@@ -82,7 +82,7 @@ PassChecks(windowcheck:=1, cursorcheck:="NOTSET", notinchatcheck:=1)
 	if (notinchatcheck)
 	{
 		ImageSearch, FoundX, FoundY, 860, 960, 1000, 1100, *50, *Trans0xFF0000 GenshinControlHints\ChatCheck.png
-		if (ErrorLevel == 0)
+		if (ErrorLevel = 0)
 		{
 			return 0
 		}
@@ -177,10 +177,9 @@ return
 }
 
 ~f::
-if !WinActive("ahk_class UnityWndClass")
-	return
-if !IsCursorVisible()
 {
+	if !PassChecks(true, [true, false])
+		return
 	KeyWait, f, T0.2
 	if (ErrorLevel = 1)
 	{
@@ -198,8 +197,8 @@ if !IsCursorVisible()
 			Sleep, 15
 		}
 	}
+	return
 }
-return
 
 ~` & WheelUp::
 DllCall("mouse_event", "UInt", 0x01, "UInt", 0, "UInt", -250)
@@ -275,14 +274,12 @@ FindAndClickConfirmButton(shouldreturn:=true)
 }
 
 ~r::
-if !WinActive("ahk_class UnityWndClass")
-;ahk_exe GenshinImpact.exe
-	return
-if IsCursorVisible()
 {
+	if !PassChecks()
+		return
 	FindAndClickConfirmButton()
+	return
 }
-return
 
 IsInMapGUI()
 {
@@ -540,26 +537,27 @@ GetDialogOptionPos(option)
 }
 
 ~CapsLock::
-if !WinActive("ahk_class UnityWndClass")
-;ahk_exe GenshinImpact.exe
-	return
-KeyWait, CapsLock
-Sleep, 10
-if (GetKeyState("CapsLock", "T"))
 {
-	Send {w down}
-	Loop 
+	if !PassChecks(true, [0, 0])
+		return
+	KeyWait, CapsLock
+	Sleep, 10
+	if (GetKeyState("CapsLock", "T"))
 	{
-		KeyWait, w, D T0.1
-		if (!GetKeyState("CapsLock", "T") || ErrorLevel = 0)
+		Send {w down}
+		Loop 
 		{
-			Break
+			KeyWait, w, D T0.1
+			if (!GetKeyState("CapsLock", "T") || ErrorLevel = 0)
+			{
+				Break
+			}
 		}
+		Send {w up}
+		SetCapsLockState, Off
 	}
-	Send {w up}
-	SetCapsLockState, Off
+	return
 }
-return
 
 CollectExpeditionRewards()
 {
@@ -741,12 +739,12 @@ CollectExpeditionRewards()
 }
 
 F12::
-if !WinActive("ahk_class UnityWndClass")
-	Return
-if IsCursorVisible() == 0
-	Return
-CollectExpeditionRewards()
-return
+{
+	if !PassChecks()
+		return
+	CollectExpeditionRewards()
+	return
+}
 
 ~1::
 ~2::
@@ -754,14 +752,14 @@ return
 ~4::
 ~5::
 ~6::
-if !WinActive("ahk_class UnityWndClass")
-	return
-if IsCursorVisible() == 0
-	return
-HKPressed := SubStr(A_ThisHotkey, 2, 1)
-dialogpos := GetDialogOptionPos(HKPressed)
-if (dialogpos["found"])
 {
-	ClickAndReturn(dialogpos["x"], dialogpos["y"])
+	if !PassChecks()
+		return
+	HKPressed := SubStr(A_ThisHotkey, 2, 1)
+	dialogpos := GetDialogOptionPos(HKPressed)
+	if (dialogpos["found"])
+	{
+		ClickAndReturn(dialogpos["x"], dialogpos["y"])
+	}
+	return
 }
-return

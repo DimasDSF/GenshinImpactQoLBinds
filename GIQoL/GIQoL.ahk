@@ -6,6 +6,7 @@ SetMouseDelay, 5
 SetStoreCapsLockMode, Off
 CoordMode, Mouse, Screen
 
+/*
 if A_IsAdmin != 1
 {
 	SoundPlay, *48
@@ -16,6 +17,20 @@ Genshin Impact is using a launcher always running in admin mode
 GIRebind requires running as admin to be able to pass keystrokes and mouse events to any admin mode app
 ), 15
 	ExitApp
+}
+*/
+full_command_line := DllCall("GetCommandLine", "str")
+
+if not (A_IsAdmin or RegExMatch(full_command_line, " /restart(?!\S)"))
+{
+    try
+    {
+        if A_IsCompiled
+            Run *RunAs "%A_ScriptFullPath%" /restart
+        else
+            Run *RunAs "%A_AhkPath%" /restart "%A_ScriptFullPath%"
+    }
+    ExitApp
 }
 
 global debug := 0
@@ -52,13 +67,42 @@ IsCursorVisible()
       return 0
 }
 
-ClickAndReturn(x, y)
+PassChecks(windowcheck:=1, cursorcheck:="NOTSET", notinchatcheck:=1)
+{
+	if (cursorcheck == "NOTSET")
+		cursorcheck:=[1, 1]
+	if (windowcheck && !WinActive("ahk_class UnityWndClass"))
+	{
+		return 0
+	}
+	if (cursorcheck[1] && IsCursorVisible() != cursorcheck[2])
+	{
+		return 0
+	}
+	if (notinchatcheck)
+	{
+		ImageSearch, FoundX, FoundY, 860, 960, 1000, 1100, *50, *Trans0xFF0000 GenshinControlHints\ChatCheck.png
+		if (ErrorLevel == 0)
+		{
+			return 0
+		}
+	}
+	return 1
+}
+
+ClickAndReturn(x, y, shouldreturn:=true, precise:=false)
 {
 	MouseGetPos, startxpos, startypos
-	MouseMove, x+Random(-5, 5), y+Random(-5, 5), 5
+	if (precise)
+		MouseMove, x, y, Random(3.0, 5.0)
+	else
+		MouseMove, x+Random(-5, 5), y+Random(-5, 5), Random(3.0, 5.0)
 	Click
-	Sleep, 200
-	MouseMove, startxpos+Random(-10, 10), startypos+Random(-10, 10), 5
+	if shouldreturn
+	{
+		Sleep, 200
+		MouseMove, startxpos+Random(-10, 10), startypos+Random(-10, 10), Random(3.0, 5.0)
+	}
 	return
 }
 
@@ -111,6 +155,27 @@ DestroyDevText(n) {
 }
 return
 
+;Teapot Furniture Collision Skip
+*XButton1::
+{
+	if !PassChecks()
+		return
+	ImageSearch, FoundX, FoundY, 0, 0, 150, 150, *50, *Trans0xFF0000 GenshinControlHints\TeapotBuildingSettings.png
+	if (ErrorLevel != 0)
+		return
+	MouseGetPos, startxpos, startypos
+	Click, down
+	While (GetKeyState("XButton1", "P"))
+	{
+		MouseMove, Random(0, A_ScreenWidth), Random(0, A_ScreenHeight), 0.01
+	}
+	Sleep, 10
+	MouseMove, startxpos+Random(-1.0, 1.0), startypos+Random(-1.0, 1.0), 0.1
+	Sleep, 50
+	Click, up
+	return
+}
+
 ~f::
 if !WinActive("ahk_class UnityWndClass")
 	return
@@ -144,65 +209,61 @@ return
 DllCall("mouse_event", "UInt", 0x01, "UInt", 0, "UInt", 250)
 return
 
-~r::
-if !WinActive("ahk_class UnityWndClass")
-;ahk_exe GenshinImpact.exe
-	return
-if IsCursorVisible()
+FindAndClickConfirmButton(shouldreturn:=true)
 {
 	ImageSearch, FoundX, FoundY, 0, (A_ScreenHeight // 2), A_ScreenWidth, A_ScreenHeight, *50, *TransBlack GenshinControlHints\Confirm.png
 	if (ErrorLevel = 0)
 	{
-		ClickAndReturn(FoundX+6, FoundY)
-		return
+		ClickAndReturn(FoundX+6, FoundY, shouldreturn)
+		return true
 	}
 	else
 	{
 		ImageSearch, FoundXTP, FoundYTP, 1400, 870, A_ScreenWidth, A_ScreenHeight, *60, *TransBlack GenshinControlHints\TPConfirm.png
 		if (ErrorLevel = 0)
 		{
-			ClickAndReturn(FoundXTP+10, FoundYTP+3)
-			return
+			ClickAndReturn(FoundXTP+10, FoundYTP+3, shouldreturn)
+			return true
 		}
 		else
 		{
 			ImageSearch, FoundXNavigate, FoundYNavigate, 1400, 950, A_ScreenWidth, A_ScreenHeight, *50, *TransBlack GenshinControlHints\Navigate.png
 			if (ErrorLevel = 0)
 			{
-				ClickAndReturn(FoundXNavigate+10, FoundYNavigate+3)
-				return
+				ClickAndReturn(FoundXNavigate+10, FoundYNavigate+3, shouldreturn)
+				return true
 			}
 			else
 			{
 				ImageSearch, FoundXNavigateW, FoundYNavigateW, 1440, 935, 1600, 1065, *70, *TransBlack GenshinControlHints\NavigateW.png
 				if (ErrorLevel = 0)
 				{
-					ClickAndReturn(FoundXNavigateW+80, FoundYNavigateW)
-					return
+					ClickAndReturn(FoundXNavigateW+80, FoundYNavigateW, shouldreturn)
+					return true
 				}
 				else
 				{
 					ImageSearch, FoundXObtain, FoundYObtain, 1040, 870, A_ScreenWidth, A_ScreenHeight, *70, *TransBlack GenshinControlHints\Obtain.png
 					if (ErrorLevel = 0)
 					{
-						ClickAndReturn(FoundXObtain+13, FoundYObtain)
-						return
+						ClickAndReturn(FoundXObtain+13, FoundYObtain, shouldreturn)
+						return true
 					}
 					else
 					{
 						ImageSearch, FoundXBPClaim, FoundYBPClaim, 1590, 327, 1750, 825, *70, *TransBlack GenshinControlHints\BPClaim.png
 						if (ErrorLevel = 0)
 						{
-							ClickAndReturn(FoundXBPClaim+40, FoundYBPClaim+15)
-							return
+							ClickAndReturn(FoundXBPClaim+40, FoundYBPClaim+15, shouldreturn)
+							return true
 						}
 						else
 						{
 							ImageSearch, FoundXBPClaimAll, FoundYBPClaimAll, 1600, 930, A_ScreenWidth, A_ScreenHeight, *70, *TransBlack GenshinControlHints\BPClaimAll.png
 							if (ErrorLevel = 0)
 							{
-								ClickAndReturn(FoundXBPClaimAll+40, FoundYBPClaimAll-2)
-								return
+								ClickAndReturn(FoundXBPClaimAll+40, FoundYBPClaimAll-2, shouldreturn)
+								return true
 							}
 						}
 					}
@@ -210,6 +271,16 @@ if IsCursorVisible()
 			}
 		}
 	}
+	return false
+}
+
+~r::
+if !WinActive("ahk_class UnityWndClass")
+;ahk_exe GenshinImpact.exe
+	return
+if IsCursorVisible()
+{
+	FindAndClickConfirmButton()
 }
 return
 
@@ -488,6 +559,193 @@ if (GetKeyState("CapsLock", "T"))
 	Send {w up}
 	SetCapsLockState, Off
 }
+return
+
+CollectExpeditionRewards()
+{
+	ImageSearch, InExpScreenX, InExpScreenY, 0, 0, 150, 120, *60, *TransWhite GenshinControlHints\IsInExpeditionScreen.png
+	if (ErrorLevel != 0)
+	{
+		SoundPlay *16
+		return
+	}
+	locations := [[118, 163], [118, 235], [118, 305]]
+	character_busy_box := [516, 106]
+	character_box_x := [325, 850] ; 1-Busy Status, 2-Boost Arrow
+	character_box_width := [516, 51] ; 1-Busy Status, 2-Boost Arrow
+	character_box_height := 43
+	character_box_locs := [120, 244, 369, 494, 619, 744, 868]
+	search_box := [350, 150, 1310, 934]
+	loc_num := 0
+	Loop % locations.Length()
+	{
+		loc_num++
+		; Click the location in the top left corner
+		if (debug)
+		{
+			locname_dev_rect := DevRect(locations[loc_num][1]-5, locations[loc_num][2]-30, locations[loc_num][1]+100, locations[loc_num][2]+30, "11FFEB")
+			Sleep, 1000
+			DestroyDevRect(locname_dev_rect)
+		}
+		ClickAndReturn(locations[loc_num][1], locations[loc_num][2], false)
+		Sleep, 500
+		isNotDone := true
+		while (isNotDone)
+		{
+			; Find a Compeleted Expedition
+			isFound := false
+			ImageSearch, FoundExpX, FoundExpY, search_box[1], search_box[2], search_box[3], search_box[4], *55, *Trans0xFF0000 GenshinControlHints\ExpeditionReward.png
+			if (ErrorLevel = 0)
+			{
+				isFound := true
+			}
+			else
+			{
+				ImageSearch, FoundExpX, FoundExpY, search_box[1], search_box[2], search_box[3], search_box[4], *55, *Trans0xFF0000 GenshinControlHints\ExpeditionRewardBig.png
+				if (ErrorLevel = 0)
+				{
+					isFound := true
+				}
+			}
+			if (isFound)
+			{
+				if (debug)
+				{
+					reward_dev_rect := DevRect(FoundExpX, FoundExpY, FoundExpX+71, FoundExpY+22, "68A4FF")
+					Sleep, 1000
+					DestroyDevRect(reward_dev_rect)
+					rewardclick_dev_rect := DevRect(FoundExpX+22-5, FoundExpY+71-5, FoundExpX+22+5, FoundExpY+71+5, "99FF14")
+					Sleep, 1000
+					DestroyDevRect(rewardclick_dev_rect)
+				}
+				; Select it
+				ClickAndReturn(FoundExpX+35, FoundExpY+83, false)
+				Sleep, 500
+				; Claim
+				FindAndClickConfirmButton(false)
+				Sleep, 500
+				ClickAndReturn(Round(A_ScreenWidth * 0.7), 950, false)
+				Sleep, 500
+				FindAndClickConfirmButton(false)
+				Sleep, 1000
+				; Find a character that has a boost but is not busy ATM and click them
+				char_num := 0
+				preferred_char := 0
+				Loop % character_box_locs.Length()
+				{
+					char_num++
+					if (debug)
+					{
+						charbox_dev_rect := DevRect(character_box_x[1], character_box_locs[char_num], character_box_x[1]+character_box_width[1], character_box_locs[char_num]+character_box_height, "FF00EE")
+						Sleep, 1000
+						DestroyDevRect(charbox_dev_rect)
+					}
+					PixelSearch, FoundBoostX, FoundBoostY, character_box_x[1], character_box_locs[char_num], character_box_x[1]+character_box_width[1], character_box_locs[char_num]+character_box_height, 0xDCBC60, 5, Fast RGB ;Is Busy? (Yellow)
+					isBusy := -1
+					if (ErrorLevel != 0)
+					{
+						PixelSearch, FoundBoostX, FoundBoostY, character_box_x[1], character_box_locs[char_num], character_box_x[1]+character_box_width[1], character_box_locs[char_num]+character_box_height, 0x99CC32, 10, Fast RGB ;Is Busy? (Green)
+						if (ErrorLevel != 0)
+						{
+							isBusy := 0
+						}
+						else
+						{
+							isBusy := 1
+						}
+					}
+					else
+					{
+						isBusy := 2
+					}
+					if (debug)
+					{
+						errorlvls_dt := DevText(965, character_box_locs[char_num], "Status: " . (isBusy = 0 ? "Free" : (isBusy = 2 ? "Exploring" : "Awaiting")),,, 14)
+						Sleep, 2000
+						DestroyDevText(errorlvls_dt)
+					}
+					if (isBusy = 0)
+					{
+						if (debug)
+						{
+							charbox_dev_rect := DevRect(character_box_x[1], character_box_locs[char_num], character_box_x[1]+character_box_width[1], character_box_locs[char_num]+character_box_height, "00FF00")
+							Sleep, 500
+							DestroyDevRect(charbox_dev_rect)
+							Sleep, 500
+							charboxboost_dev_rect := DevRect(character_box_x[2], character_box_locs[char_num], character_box_x[2]+character_box_width[2], character_box_locs[char_num]+character_box_height, "0033FF")
+							Sleep, 1000
+							DestroyDevRect(charboxboost_dev_rect)
+						}
+						PixelSearch, FoundBoostX, FoundBoostY, character_box_x[2], character_box_locs[char_num], character_box_x[2]+character_box_width[2], character_box_locs[char_num]+character_box_height, 0x99FF22, 5, Fast RGB
+						if (ErrorLevel = 0)
+						{
+							; This is a Boosted Character
+							preferred_char := char_num
+							if (debug)
+							{
+								charbox_dev_rect := DevRect(character_box_x[2], character_box_locs[char_num], character_box_x[2]+character_box_width[2], character_box_locs[char_num]+character_box_height, "1DFF00")
+								Sleep, 1000
+								DestroyDevRect(charbox_dev_rect)
+							}
+							break
+						}
+						else
+						{
+							; This is not a Boosted Character but incase we have no boosted characters we will use this one
+							preferred_char := char_num
+							if (debug)
+							{
+								charbox_dev_rect := DevRect(character_box_x[2], character_box_locs[char_num], character_box_x[2]+character_box_width[2], character_box_locs[char_num]+character_box_height, "FF1500")
+								Sleep, 1000
+								DestroyDevRect(charbox_dev_rect)
+							}
+						}
+					}
+					else
+					{
+						if (debug)
+						{
+							charbox_dev_rect := DevRect(character_box_x[1], character_box_locs[char_num], character_box_x[1]+character_box_width[1], character_box_locs[char_num]+character_box_height, "FF1500")
+							Sleep, 1000
+							DestroyDevRect(charbox_dev_rect)
+						}
+					}
+				}
+				if (preferred_char != 0)
+				{
+					; If we have atleast one character available pick them
+					if (debug)
+					{
+						charbox_dev_rect := DevRect(character_box_x[1], character_box_locs[preferred_char], character_box_x[1]+character_box_width[1], character_box_locs[preferred_char]+character_box_height, "2DFBFF")
+						Sleep, 1000
+						DestroyDevRect(charbox_dev_rect)
+					}
+					ClickAndReturn(character_box_x[1], character_box_locs[preferred_char]+30, false)
+				}
+				else
+				{
+					; No Available Characters found - sound an alarm and bail out
+					SoundPlay *16
+					return
+				}
+				Sleep, 500
+			}
+			else
+			{
+				isNotDone := false
+			}
+		}
+	}
+	; Exit
+	ClickAndReturn(1842, 45, false)
+}
+
+F12::
+if !WinActive("ahk_class UnityWndClass")
+	Return
+if IsCursorVisible() == 0
+	Return
+CollectExpeditionRewards()
 return
 
 ~1::
